@@ -1,0 +1,27 @@
+#!/bin/bash
+
+no_logging=true
+source_root="$( cd "$( dirname $( realpath "${BASH_SOURCE[0]}" ) )/.." && pwd )"
+source $source_root/bin/utils.sh
+
+case $1 in
+    eval)
+        "${@:2}"
+        ;;
+    vim)
+        $source_root/bin/vim_command.sh "${@:2}"
+        ;;
+    gc)
+        $source_root/bin/killall_detached.sh
+        ;;
+    foreground)
+        echo "$(get_foreground)"
+        ;;
+    annotate)
+        vim -u $source_root/conf/.vimrc.launcher "${@:2}"
+        ;;
+    -*|exit|run|build|test|interactive)
+        $source_root/bin/run_pane.sh "${@}"
+        ;;
+esac
+

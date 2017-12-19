@@ -1,15 +1,14 @@
 #!/bin/bash
 
-log="$1"
-cmd=( "${@:2}" )
-cmd_str="${@:2}"
+no_logging=true
+source_root="$( cd "$( dirname $( realpath "${BASH_SOURCE[0]}" ) )/.." && pwd )"
+source $source_root/bin/utils.sh
 
-log_file="$HOME/.tpane/$log.log"
-if [ -n "$log" ]; then
-    title="Log output: $log"
-else
-    title="Command output: ${cmd[@]}"
-fi
+pane_type="$1"
+
+select_type $pane_type
+
+title="Log output: $pane_type"
 
 red=200
 green=0
@@ -45,7 +44,7 @@ columns=$(tmux display -p "#{pane_width}")
 buf=2
 margin=$[($columns-${#title})/2]
 per=1 # $[($margin-$buf)/${#gradient[@]}]
-tokens=$(printf "=%.0s" $(seq 1 $per))
+tokens=$(printf "═%.0s" $(seq 1 $per))
 title="$(
     printf "#[bg=#000000]"
     for i in "${gradient[@]}" ; do printf "#[fg=$color_prefix${i}]$tokens"; done
@@ -55,14 +54,64 @@ title="$(
 
 tmux set-window-option -q window-status-current-format "$title"
 
-if [ -n "$log" ]; then
-    contents="$(tail -2000 $log_file)"
-    echo "$contents" > $log_file
+contents="$(tail -2000 $type_log)"
+echo "$contents" > $type_log
 
-    cat $log_file
-    "${cmd[@]}" 2>&1 | tee -a $log_file
-    read
-else
-    "${cmd[@]}"
-fi
+cat $type_log
+
+set -o pipefail
+set +e
+
+while :; do
+    (
+        while :; do
+            echo -n >$type_pid_file
+
+            read -u 4 -r file dir interactive line
+
+            if [ "$?" != "0" ]; then
+                break
+            fi
+
+            if [ -e "$file" -a -d "$dir" ]; then
+                (
+                    flock 100
+
+                    echo "-1" >"$file"
+
+                    if ((interactive)); then
+                        set -m
+                        (
+                            set +m
+
+                            echo -n $BASHPID >$type_pid_file
+
+                            cd $dir
+
+                            log $line
+                            $line
+                        )
+
+                        r=$?
+                        set +m
+
+                        clear
+                        stty sane
+                    else
+                        (
+                            cd $dir
+
+                            bash -c "$line" 2>&1 | tee -a $type_log
+                        )
+
+                        r=$?
+                    fi
+
+                    echo $r >"$file"
+                ) 100>$type_lock
+            fi
+        done
+    ) 4<$type_fifo
+done
+
 

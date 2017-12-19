@@ -1,13 +1,9 @@
 #!/bin/bash
-#
+
+source_root="$( cd "$( dirname $( realpath "${BASH_SOURCE[0]}" ) )/.." && pwd )"
+source $source_root/bin/utils.sh
 
 [ -z $1 ] && exit
-
-log(){
-    # echo $@
-    # echo $@ >> ~/tmp/log
-    return
-}
 
 case $1 in
     'h') cmd="select-pane -L";;

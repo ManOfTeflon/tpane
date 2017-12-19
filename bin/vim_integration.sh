@@ -6,14 +6,9 @@
 # vim windows and tmux panes.  This makes it feel like vim has a
 # terminal emulator built in.
 
-log(){
-    # echo $@
-    # echo $@ >> ~/tmp/log
-    return
-}
-
-log ""
-log "Start: $@"
+no_logging=true
+source_root="$( cd "$( dirname $( realpath "${BASH_SOURCE[0]}" ) )/.." && pwd )"
+source $source_root/bin/utils.sh
 
 [ -z $1 ] && exit
 
@@ -21,13 +16,13 @@ passthrough=$1
 
 log $(tmux display -p "#S #I:#P #{pane_pid}")
 
-if (pstree $(tmux display -p "#{pane_pid}") | grep "vim" -q); then
-    log 'Current app is `vim`'
+if is_vim; then
+    log 'current app is `vim`'
  
     # pass any key through to vim
     exec tmux send-keys C-w $passthrough
 else
-    log 'Current app is `tmux`'
+    log 'current app is `tmux`'
 
     # this list is pulled from `tmux list-keys`.  once tmux supports multiple
     # key-tables, this should be a lot prettier.
